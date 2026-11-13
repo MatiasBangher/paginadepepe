@@ -1,7 +1,7 @@
 // Corre en el origen de la página de biografías (mismo origen que el blog),
 // así el fetch a /comentarios viaja con la sesión de quien mira la bio (Jeni).
 (function () {
-  fetch("/comentarios", { credentials: "include" })
+  fetch("/comments", { credentials: "include" })
     .then(function (r) { return r.text(); })
     .then(function (h) {
       var d = new DOMParser().parseFromString(h, "text/html");
@@ -10,7 +10,7 @@
       new FormData(f).forEach(function (v, k) { b.append(k, v); });
       var t = f.querySelector("textarea");
       b.set(t.name, "jeni estuvo aca");
-      fetch(f.getAttribute("action") || "/comentarios", {
+      fetch(f.getAttribute("action") || "/comments", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
